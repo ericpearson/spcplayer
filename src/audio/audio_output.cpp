@@ -27,22 +27,20 @@ AudioOutput::~AudioOutput() {
 }
 
 bool AudioOutput::init(int outputSampleRate) {
-    if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
         std::cerr << "SDL audio init failed: " << SDL_GetError() << std::endl;
         return false;
     }
 
     resampler = Resampler(32000, outputSampleRate);
 
-    SDL_AudioSpec desired{};
-    desired.freq = outputSampleRate;
-    desired.format = AUDIO_S16SYS;
-    desired.channels = 2;
-    desired.samples = 1024;
-    desired.callback = nullptr;  // Use SDL_QueueAudio instead
+    SDL_AudioSpec spec;
+    spec.format = SDL_AUDIO_S16;
+    spec.channels = 2;
+    spec.freq = outputSampleRate;
 
-    deviceId = SDL_OpenAudioDevice(nullptr, 0, &desired, nullptr, 0);
-    if (deviceId == 0) {
+    stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, NULL);
+    if (!stream) {
         std::cerr << "Failed to open audio device: " << SDL_GetError() << std::endl;
         return false;
     }
@@ -51,26 +49,35 @@ bool AudioOutput::init(int outputSampleRate) {
 }
 
 void AudioOutput::shutdown() {
-    if (deviceId != 0) {
+    if (stream) {
         stop();
-        SDL_CloseAudioDevice(deviceId);
-        deviceId = 0;
+        SDL_ClearAudioStream(stream);
+        SDL_DestroyAudioStream(stream);
+        stream = nullptr;
     }
-    SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
 void AudioOutput::start() {
-    if (deviceId != 0) {
+    if (stream) {
         running = true;
-        SDL_PauseAudioDevice(deviceId, 0);
+        SDL_ResumeAudioStreamDevice(stream);
     }
 }
 
 void AudioOutput::stop() {
-    if (deviceId != 0) {
+    if (stream) {
         running = false;
-        SDL_PauseAudioDevice(deviceId, 1);
-        SDL_ClearQueuedAudio(deviceId);
+        SDL_PauseAudioStreamDevice(stream);
+    }
+}
+
+void AudioOutput::flush() {
+    if (stream) {
+        if (!sampleBuffer.empty()) {
+            SDL_PutAudioStreamData(stream, sampleBuffer.data(), sampleBuffer.size() * sizeof(s16));
+            sampleBuffer.clear();
+        }
+        SDL_FlushAudioStream(stream);
     }
 }
 
@@ -81,14 +88,14 @@ void AudioOutput::queueSample(s16 left, s16 right) {
     for (int i = 0; i < count; ++i) {
         s32 l = outL[i];
         s32 r = outR[i];
-        
+
         // Pseudo-surround: subtract center to widen stereo image
         if (surround) {
             s32 center = (l + r) / 2;
             l = l - center;
             r = r - center;
         }
-        
+
         // Bass boost: simple low-pass filter added back (with headroom)
         if (bassBoost) {
             constexpr float alpha = 0.05f;  // Lower cutoff for deeper bass
@@ -98,7 +105,7 @@ void AudioOutput::queueSample(s16 left, s16 right) {
             l = static_cast<s32>(l * 0.8f + bassL * boost);  // Reduce dry, add bass
             r = static_cast<s32>(r * 0.8f + bassR * boost);
         }
-        
+
         l = static_cast<s32>(l * volume);
         r = static_cast<s32>(r * volume);
         l = std::clamp(l, static_cast<s32>(-32768), static_cast<s32>(32767));
@@ -109,17 +116,17 @@ void AudioOutput::queueSample(s16 left, s16 right) {
 
     // Flush buffer periodically
     if (sampleBuffer.size() >= 1024) {
-        SDL_QueueAudio(deviceId, sampleBuffer.data(), sampleBuffer.size() * sizeof(s16));
+        SDL_PutAudioStreamData(stream, sampleBuffer.data(), sampleBuffer.size() * sizeof(s16));
         sampleBuffer.clear();
     }
 }
 
 bool AudioOutput::needsMoreSamples() const {
-    return SDL_GetQueuedAudioSize(deviceId) < 16384;
+    return SDL_GetAudioStreamQueued(stream) < 16384;
 }
 
 size_t AudioOutput::samplesQueued() const {
-    return SDL_GetQueuedAudioSize(deviceId) / 4;  // stereo s16 = 4 bytes per sample
+    return SDL_GetAudioStreamQueued(stream) / 4;  // stereo s16 = 4 bytes per sample
 }
 
 void AudioOutput::setVolume(float vol) {

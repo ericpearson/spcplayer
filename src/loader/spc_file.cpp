@@ -18,6 +18,7 @@
 #include <fstream>
 #include <iostream>
 #include <cstring>
+#include <vector>
 
 bool SPCFile::load(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary);

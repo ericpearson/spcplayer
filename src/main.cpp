@@ -15,7 +15,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #include "player/spc_player.hpp"
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <iostream>
 #include <csignal>
 #include <atomic>
@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
     std::signal(SIGTERM, signalHandler);
 
     // Initialize SDL
-    if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+    if (!SDL_Init(SDL_INIT_AUDIO)) {
         std::cerr << "Failed to initialize SDL: " << SDL_GetError() << "\n";
         return 1;
     }
@@ -122,8 +122,16 @@ int main(int argc, char* argv[]) {
         SDL_Delay(1);
     }
 
-    // Clean shutdown
-    player.stop();
+    // Clean shutdown: drain audio if song finished, stop immediately on Ctrl+C
+    if (!g_running) {
+        player.stop();
+    } else {
+        player.flushAudio();
+        while (player.audioQueued() > 0 && g_running) {
+            SDL_Delay(10);
+        }
+        player.stop();
+    }
     SDL_Quit();
 
     std::cout << "\nPlayback stopped.\n";
