@@ -23,7 +23,7 @@ jobs:
           install: >-
             mingw-w64-ucrt-x86_64-toolchain
             mingw-w64-ucrt-x86_64-cmake
-            mingw-w64-ucrt-x86_64-SDL3
+            mingw-w64-ucrt-x86_64-sdl3
 
       - name: Configure
         run: cmake -B build -G "MinGW Makefiles"
@@ -35,7 +35,7 @@ jobs:
         run: |
           mkdir -p dist
           cp build/spcplayer.exe dist/
-          cp "$(pkg-config --variable=libdir sdl3)/../bin/SDL3.dll" dist/
+          cp "$MINGW_PREFIX/bin/SDL3.dll" dist/
 
       - uses: actions/upload-artifact@v4
         with:
