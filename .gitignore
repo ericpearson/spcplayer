@@ -1,0 +1,28 @@
+# Build
+build/
+
+# IDE/Editor
+.cache/
+.vscode/
+*.swp
+*.swo
+*~
+
+# SPC files
+*.spc
+spc_files/
+
+# OS
+.DS_Store
+
+# SPC files
+*.spc
+spc_files/
+
+# SPC files
+*.spc
+spc_files/
+
+# SPC files
+*.spc
+spc_files/
