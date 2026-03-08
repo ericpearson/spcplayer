@@ -18,7 +18,7 @@
 
 #include "util/types.hpp"
 #include "resampler.hpp"
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <vector>
 
 class AudioOutput {
@@ -31,6 +31,7 @@ public:
 
     void start();
     void stop();
+    void flush();
 
     // Queue a stereo sample (from DSP at 32kHz)
     void queueSample(s16 left, s16 right);
@@ -43,7 +44,7 @@ public:
     void setBassBoost(bool enabled) { bassBoost = enabled; }
 
 private:
-    SDL_AudioDeviceID deviceId = 0;
+    SDL_AudioStream* stream = nullptr;
     Resampler resampler;
     std::vector<s16> sampleBuffer;  // Batch samples before queuing
     float volume = 1.0f;

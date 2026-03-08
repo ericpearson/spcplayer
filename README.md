@@ -13,10 +13,22 @@ A command-line SNES SPC700 music player. Loads `.spc` files and plays them back 
 
 ## Building
 
-Requires CMake and SDL2.
+### Linux / macOS
+
+Requires CMake and SDL3.
 
 ```sh
 cmake -B build
+cmake --build build
+```
+
+### Windows (MSYS2 / UCRT64)
+
+Install [MSYS2](https://www.msys2.org/), then from a UCRT64 shell:
+
+```sh
+pacman -S mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-SDL3
+cmake -B build -G "MinGW Makefiles"
 cmake --build build
 ```
 

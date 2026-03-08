@@ -42,6 +42,8 @@ public:
     bool isPlaying() const { return playing; }
     bool isFinished() const;
     bool needsMoreSamples() const { return audio.needsMoreSamples(); }
+    void flushAudio() { audio.flush(); }
+    size_t audioQueued() const { return audio.samplesQueued(); }
 
     // Run emulation for the audio callback
     // Generates samples until buffer is satisfied
